@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Web Flight Simulator</title>
+	<link rel="icon" type="image/x-icon" href="/favicon.ico">
+	<link rel="stylesheet" href="/src/style.css">
+</head>
+
+<body>
+	<div id="cesiumContainer"></div>
+	<div id="threeContainer"></div>
+
+	<div id="mainMenu" class="overlay">
+		<div class="menu-container">
+			<div class="menu-vignette"></div>
+			<div class="menu-content">
+				<div class="menu-header">
+					<div class="menu-logo">
+						<span class="logo-main">WEB FLIGHT</span>
+						<span class="logo-sub">SIMULATOR</span>
+					</div>
+				</div>
+				
+				<div class="menu-main">
+					<nav class="menu-nav">
+						<button id="startBtn" class="main-menu-btn" disabled>
+							<span class="btn-top">01</span>
+							<span class="btn-mid">START GAME</span>
+							<span class="btn-bot">COMMENCE FLIGHT OPERATIONS</span>
+						</button>
+						<button id="optionsBtn" class="main-menu-btn">
+							<span class="btn-top">02</span>
+							<span class="btn-mid">SYSTEM CONFIG</span>
+							<span class="btn-bot">ADJUST HARDWARE SETTINGS</span>
+						</button>
+						<button id="helpBtn" class="main-menu-btn">
+							<span class="btn-top">03</span>
+							<span class="btn-mid">OPERATIONS MANUAL</span>
+							<span class="btn-bot">FLIGHT CONTROLS & PROCEDURES</span>
+						</button>
+					</nav>
+				</div>
+
+			</div>
+		</div>
+	</div>
+
+	<div id="loadingIndicator" class="loading-container">
+		<div class="spinner"></div>
+		<div id="loadingText" class="loading-text">Loading system...</div>
+	</div>
+
+	<div id="optionsModal" class="modal hidden">
+		<div class="modal-header">
+			<div class="modal-title">SYSTEM CONFIG</div>
+			<button class="close-modal">CLOSE</button>
+		</div>
+		<div class="modal-body">
+			<h3>GRAPHICS UNIT</h3>
+			<div class="setting-item">
+				<span>Graphics Quality</span>
+				<select id="graphicsQuality">
+					<option value="low">Low (High Perf)</option>
+					<option value="medium" selected>Medium (Balanced)</option>
+					<option value="high">High (High Quality)</option>
+				</select>
+			</div>
+			<div class="setting-item">
+				<span>Anti-Aliasing (FXAA)</span>
+				<input type="checkbox" id="antialiasing" checked>
+			</div>
+
+			<div class="setting-item">
+				<span>Sound Active</span>
+				<input type="checkbox" id="soundEnabled" checked>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<button id="saveOptionsBtn">CONFIRM & SAVE</button>
+		</div>
+	</div>
+
+	<div id="helpModal" class="modal hidden">
+		<div class="modal-header">
+			<div class="modal-title">OPERATIONS MANUAL</div>
+			<button class="close-modal">CLOSE</button>
+		</div>
+		<div class="modal-body">
+			<h3>FLIGHT CONTROL</h3>
+			<div class="control-grid">
+				<div class="key">UP / DOWN</div>
+				<div>Pitch Down / Up</div>
+				<div class="key">LEFT / RIGHT</div>
+				<div>Roll Left / Right</div>
+				<div class="key">A / D</div>
+				<div>Yaw (Rudder)</div>
+				<div class="key">W / S</div>
+				<div>Throttle +/-</div>
+				<div class="key">SPACE</div>
+				<div>Afterburner (Boost)</div>
+			</div>
+			<h3>NAVIGATION</h3>
+			<div class="control-grid">
+				<div class="key">DRAG MOUSE</div>
+				<div>Look Around / Orbit</div>
+				<div class="key">ESC / P</div>
+				<div>Pause / Tactical Menu</div>
+			</div>
+		</div>
+	</div>
+
+	<div id="pauseMenu" class="overlay hidden">
+		<div class="pause-content">
+			<div class="pause-sidebar">
+				<div class="pause-header">
+					<h2 class="pause-title">PAUSED</h2>
+					<div class="pause-subtitle">SYSTEM HOLD</div>
+				</div>
+				<nav class="pause-nav">
+					<button id="resumeBtn" class="pause-btn">
+						<span class="btn-label">RESUME</span>
+						<span class="btn-desc">RETURN TO FLIGHT</span>
+					</button>
+					<button id="restartBtn" class="pause-btn">
+						<span class="btn-label">RESTART</span>
+						<span class="btn-desc">RESTART GAME</span>
+					</button>
+					<button id="pauseHelpBtn" class="pause-btn">
+						<span class="btn-label">HELP</span>
+						<span class="btn-desc">OPERATIONS MANUAL</span>
+					</button>
+					<button id="pauseOptionsBtn" class="pause-btn">
+						<span class="btn-label">OPTIONS</span>
+						<span class="btn-desc">SYSTEM CONFIG</span>
+					</button>
+					<button id="quitBtn" class="pause-btn quit">
+						<span class="btn-label">QUIT</span>
+						<span class="btn-desc">BACK TO MENU</span>
+					</button>
+				</nav>
+			</div>
+			<div class="pause-main">
+			</div>
+		</div>
+	</div>
+
+	<div id="crashMenu" class="overlay hidden">
+		<h2 class="menu-title crash-header">AIRCRAFT DESTROYED</h2>
+		<button id="respawnBtn" class="menu-btn">RESPAWN</button>
+	</div>
+
+	<div id="spawnInstruction" class="hidden">
+		<div id="spawn-top-ui" class="spawn-hud-top">
+			<div id="spawn-instruction">
+				<span id="instruction-text">CLICK ANYWHERE ON THE MAP TO CHOOSE SPAWN POINT</span>
+				<input type="text" id="locationSearch" placeholder="ENTER LOCATION NAME...">
+				<div id="search-results">
+				</div>
+			</div>
+			<div id="search-toggle-btn" title="Toggle Search">
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+					<circle cx="11" cy="11" r="8"></circle>
+					<line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+				</svg>
+			</div>
+		</div>
+
+		<button id="confirmSpawnBtn" class="menu-btn hidden spawn-confirm-btn">CONFIRM SPAWN POINT</button>
+	</div>
+
+	<div id="uiContainer" class="hidden">
+		<div id="compass-container">
+			<div id="compass-center-marker"></div>
+			<div id="compass-tape"></div>
+		</div>
+		<div id="heading-display">000</div>
+
+		<div id="hud-speed-box">
+			<div class="label">SPEED</div>
+			<div class="value-box">
+				<span id="speed">0</span>
+			</div>
+		</div>
+
+		<div id="hud-alt-box">
+			<div class="label">ALT</div>
+			<div class="value-box">
+				<span id="altitude">0</span>
+			</div>
+		</div>
+
+		<div id="coords">0.0000, 0.0000</div>
+
+		<div id="region-notification" class="hidden">
+			<div class="region-label">ENTERING AREA</div>
+			<div id="region-name">REGION NAME</div>
+		</div>
+
+		<div id="pull-up-warning" class="hidden">PULL UP</div>
+
+	</div>
+
+	<div id="transition-vignette"></div>
+
+	<script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
