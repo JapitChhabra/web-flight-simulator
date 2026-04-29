@@ -7,6 +7,7 @@ import { movePosition } from './utils/math';
 import { HUD } from './ui/hud.js';
 import { soundManager } from './utils/soundManager';
 import * as Cesium from 'cesium';
+import { api } from './api/apiClient.js';
 
 Cesium.Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN;
 
@@ -126,6 +127,22 @@ let spawnMarker = null;
 
 const startBtn = document.getElementById('startBtn');
 
+// Home screen account dropdown + game history.
+const accountBtn = document.getElementById('accountBtn');
+const accountMenu = document.getElementById('accountMenu');
+const accountSignedInSection = document.getElementById('accountSignedInSection');
+const accountSignedOutSection = document.getElementById('accountSignedOutSection');
+const accountUserLabel = document.getElementById('accountUserLabel');
+const accountAddAccountBtn = document.getElementById('accountAddAccountBtn');
+const accountLogoutBtn = document.getElementById('accountLogoutBtn');
+const accountLoginBtn = document.getElementById('accountLoginBtn');
+const accountSignupBtn = document.getElementById('accountSignupBtn');
+
+const historyBtn = document.getElementById('historyBtn');
+const historyModal = document.getElementById('historyModal');
+const historyList = document.getElementById('historyList');
+const historyEmpty = document.getElementById('historyEmpty');
+
 const loadingIndicator = document.getElementById('loadingIndicator');
 const loadingText = document.getElementById('loadingText');
 
@@ -136,6 +153,216 @@ const loadingStatus = {
 	globe: false,
 	failed: false
 };
+
+let currentUser = null; // { id, username }
+let authStatus = 'unknown'; // 'unknown' | 'authenticated' | 'unauthenticated'
+let authModalOpenedOnce = false;
+
+// Game session persistence (MongoDB via backend).
+let activeFlightSessionId = null;
+let pendingSpawn = null;
+
+function openAuthModal(tab = 'login') {
+	const authModal = document.getElementById('authModal');
+	if (!authModal) return;
+
+	const loginForm = document.getElementById('loginForm');
+	const signupForm = document.getElementById('signupForm');
+	const showLoginTabBtn = document.getElementById('showLoginTab');
+	const showSignupTabBtn = document.getElementById('showSignupTab');
+
+	// Reset errors on open/transition.
+	const loginError = document.getElementById('loginError');
+	const signupError = document.getElementById('signupError');
+	if (loginError) loginError.classList.add('hidden');
+	if (signupError) signupError.classList.add('hidden');
+
+	if (tab === 'signup') {
+		if (loginForm) loginForm.classList.add('hidden');
+		if (signupForm) signupForm.classList.remove('hidden');
+		if (showLoginTabBtn) showLoginTabBtn.classList.remove('active');
+		if (showSignupTabBtn) showSignupTabBtn.classList.add('active');
+	} else {
+		if (loginForm) loginForm.classList.remove('hidden');
+		if (signupForm) signupForm.classList.add('hidden');
+		if (showLoginTabBtn) showLoginTabBtn.classList.add('active');
+		if (showSignupTabBtn) showSignupTabBtn.classList.remove('active');
+	}
+
+	authModal.classList.remove('hidden');
+}
+
+async function refreshCurrentUser() {
+	const token = localStorage.getItem('fs_auth_token');
+	if (!token) {
+		currentUser = null;
+		authStatus = 'unauthenticated';
+		renderAccountMenu();
+		return;
+	}
+
+	try {
+		const data = await api.me();
+		currentUser = data.user;
+		authStatus = 'authenticated';
+		renderAccountMenu();
+	} catch {
+		api.clearToken();
+		currentUser = null;
+		authStatus = 'unauthenticated';
+		renderAccountMenu();
+	}
+}
+
+async function initAuth() {
+	await refreshCurrentUser();
+	updateLoadingUI();
+}
+
+function renderAccountMenu() {
+	const isSignedIn = !!currentUser && authStatus === 'authenticated';
+
+	if (accountBtn) {
+		// Keep the button short to fit the HUD-like overlay.
+		accountBtn.textContent = isSignedIn ? 'ACCOUNT' : 'ACCOUNT';
+	}
+
+	if (!accountMenu || !accountSignedInSection || !accountSignedOutSection) return;
+
+	if (isSignedIn) {
+		if (accountSignedOutSection) accountSignedOutSection.classList.add('hidden');
+		accountSignedInSection.classList.remove('hidden');
+		if (accountUserLabel) accountUserLabel.textContent = currentUser.username;
+	} else {
+		accountSignedInSection.classList.add('hidden');
+		if (accountSignedOutSection) accountSignedOutSection.classList.remove('hidden');
+	}
+
+	// If logged out, ensure menu closes.
+	if (!isSignedIn && accountMenu && !accountMenu.classList.contains('hidden')) {
+		accountMenu.classList.add('hidden');
+	}
+}
+
+function closeHistoryPanel() {
+	if (!historyModal) return;
+	historyModal.classList.add('hidden');
+}
+
+async function loadAndRenderHistory() {
+	if (!currentUser || authStatus !== 'authenticated') return;
+	if (!historyModal || !historyList || !historyEmpty) return;
+
+	historyList.innerHTML = '';
+	historyEmpty.classList.add('hidden');
+	historyModal.classList.remove('hidden');
+
+	try {
+		const data = await api.listGameSessions({ limit: 20 });
+		const sessions = data?.sessions || [];
+
+		if (sessions.length === 0) {
+			historyEmpty.classList.remove('hidden');
+			historyEmpty.textContent = 'No flights yet.';
+			return;
+		}
+
+		for (const s of sessions) {
+			const startTimeText = s.startTime ? new Date(s.startTime).toLocaleString() : '--';
+			const durationText = s.durationMs != null ? `${Math.round(s.durationMs / 1000)}s` : '--';
+			const endReason = s.endReason || 'ended';
+
+			const spawn = s.spawn
+				? `${Number(s.spawn.lon).toFixed(2)}, ${Number(s.spawn.lat).toFixed(2)} @ ${Math.round(
+					Number(s.spawn.alt)
+				)}m`
+				: '--';
+
+			const row = document.createElement('div');
+			row.className = 'history-row';
+			row.innerHTML = `
+				<div class="history-row-top">
+					<div class="history-row-time">${startTimeText}</div>
+					<div class="history-row-duration">${durationText}</div>
+				</div>
+				<div class="history-row-meta">${endReason} · SPAWN: ${spawn}</div>
+			`;
+			historyList.appendChild(row);
+		}
+	} catch (err) {
+		console.error('Failed to load game history:', err);
+		historyEmpty.classList.remove('hidden');
+		historyEmpty.textContent = 'Failed to load history.';
+	}
+}
+
+function getSpawnSnapshot() {
+	if (!pendingSpawn) return null;
+	return {
+		lon: pendingSpawn.lon,
+		lat: pendingSpawn.lat,
+		alt: pendingSpawn.alt,
+		heading: pendingSpawn.heading,
+		pitch: pendingSpawn.pitch,
+		roll: pendingSpawn.roll
+	};
+}
+
+function getFinalStateSnapshot() {
+	return {
+		lon: state.lon,
+		lat: state.lat,
+		alt: state.alt,
+		heading: state.heading,
+		pitch: state.pitch,
+		roll: state.roll,
+		speed: state.speed || 0
+	};
+}
+
+async function startFlightSession() {
+	if (!currentUser || authStatus !== 'authenticated') return;
+	if (activeFlightSessionId) return;
+
+	const spawn = getSpawnSnapshot();
+	if (!spawn) return;
+
+	// `flightStartTime` is assigned when the transition ends.
+	if (!Number.isFinite(flightStartTime) || flightStartTime <= 0) return;
+
+	try {
+		const res = await api.startGameSession({ spawn, startTimeMs: flightStartTime });
+		activeFlightSessionId = res?.id || null;
+		// Spawn is single-use; avoid accidentally reusing it.
+		pendingSpawn = null;
+	} catch (err) {
+		console.error('Failed to start game session:', err);
+	}
+}
+
+async function endFlightSession(endReason) {
+	if (!activeFlightSessionId) return;
+
+	const sessionId = activeFlightSessionId;
+	// Prevent double-ending (crash check can run multiple times).
+	activeFlightSessionId = null;
+	pendingSpawn = null;
+
+	const durationMs = Math.max(0, Date.now() - flightStartTime);
+	const finalState = getFinalStateSnapshot();
+	flightStartTime = 0;
+
+	try {
+		await api.endGameSession({
+			id: sessionId,
+			endReason,
+			durationMs,
+			finalState
+		});
+	} catch (err) {
+		console.error('Failed to end game session:', err);
+	}
+}
 
 function updateLoadingUI() {
 	if (!loadingIndicator || !loadingText || !startBtn) return;
@@ -173,8 +400,15 @@ function updateLoadingUI() {
 		}
 	} else {
 		loadingIndicator.classList.add('hidden');
-		startBtn.disabled = false;
-		startBtn.style.pointerEvents = "auto";
+		const canStart = !!currentUser && authStatus === 'authenticated';
+		startBtn.disabled = !canStart;
+		startBtn.style.pointerEvents = canStart ? 'auto' : 'none';
+
+		// Let unauthenticated users sign up / log in without a separate navigation button.
+		if (isAllLoaded && authStatus === 'unauthenticated' && !authModalOpenedOnce) {
+			authModalOpenedOnce = true;
+			openAuthModal('login');
+		}
 	}
 }
 
@@ -486,6 +720,7 @@ function checkCrash() {
 
 		stopAllFlyingSounds(0.1);
 		soundManager.play('crash');
+		endFlightSession('crashed');
 	}
 }
 
@@ -582,6 +817,76 @@ function setupModalListeners() {
 		closeAllModals();
 	};
 
+	// Auth modal interactions (login/signup).
+	const showLoginTabBtn = document.getElementById('showLoginTab');
+	const showSignupTabBtn = document.getElementById('showSignupTab');
+	if (showLoginTabBtn && showSignupTabBtn) {
+		showLoginTabBtn.onclick = (e) => {
+			e.stopPropagation();
+			openAuthModal('login');
+		};
+		showSignupTabBtn.onclick = (e) => {
+			e.stopPropagation();
+			openAuthModal('signup');
+		};
+	}
+
+	const loginSubmitBtn = document.getElementById('loginSubmit');
+	const signupSubmitBtn = document.getElementById('signupSubmit');
+	const loginError = document.getElementById('loginError');
+	const signupError = document.getElementById('signupError');
+
+	function clearAuthErrors() {
+		if (loginError) loginError.classList.add('hidden');
+		if (signupError) signupError.classList.add('hidden');
+	}
+
+	function setAuthError(el, message) {
+		if (!el) return;
+		el.textContent = message;
+		el.classList.remove('hidden');
+	}
+
+	if (loginSubmitBtn) {
+		loginSubmitBtn.onclick = async (e) => {
+			e.stopPropagation();
+			clearAuthErrors();
+
+			try {
+				const username = document.getElementById('loginUsername')?.value;
+				const password = document.getElementById('loginPassword')?.value;
+				const data = await api.login(username, password);
+				api.setToken(data.token);
+				await refreshCurrentUser();
+				closeAllModals();
+				updateLoadingUI();
+			} catch (err) {
+				const message = err?.data?.error || err?.message || 'Login failed';
+				setAuthError(loginError, message);
+			}
+		};
+	}
+
+	if (signupSubmitBtn) {
+		signupSubmitBtn.onclick = async (e) => {
+			e.stopPropagation();
+			clearAuthErrors();
+
+			try {
+				const username = document.getElementById('signupUsername')?.value;
+				const password = document.getElementById('signupPassword')?.value;
+				const data = await api.signup(username, password);
+				api.setToken(data.token);
+				await refreshCurrentUser();
+				closeAllModals();
+				updateLoadingUI();
+			} catch (err) {
+				const message = err?.data?.error || err?.message || 'Signup failed';
+				setAuthError(signupError, message);
+			}
+		};
+	}
+
 	document.querySelectorAll('.close-modal').forEach(btn => {
 		btn.onclick = (e) => {
 			e.stopPropagation();
@@ -594,9 +899,96 @@ function setupModalListeners() {
 			event.target.classList.add('hidden');
 		}
 	});
+
+	// Account dropdown (home screen).
+	if (accountBtn && accountMenu) {
+		accountBtn.onclick = (e) => {
+			e.stopPropagation();
+			// Toggle dropdown.
+			accountMenu.classList.toggle('hidden');
+		};
+
+		if (accountLogoutBtn) {
+			accountLogoutBtn.onclick = async () => {
+				api.clearToken();
+				// Ensure menu/history update immediately.
+				currentUser = null;
+				authStatus = 'unauthenticated';
+				authModalOpenedOnce = true;
+				closeHistoryPanel();
+				accountMenu.classList.add('hidden');
+				updateLoadingUI();
+				renderAccountMenu();
+			};
+		}
+
+		if (accountAddAccountBtn) {
+			accountAddAccountBtn.onclick = () => {
+				closeAllModals();
+				accountMenu.classList.add('hidden');
+				openAuthModal('signup');
+			};
+		}
+
+		if (accountLoginBtn) {
+			accountLoginBtn.onclick = () => {
+				accountMenu.classList.add('hidden');
+				openAuthModal('login');
+			};
+		}
+
+		if (accountSignupBtn) {
+			accountSignupBtn.onclick = () => {
+				accountMenu.classList.add('hidden');
+				openAuthModal('signup');
+			};
+		}
+
+		document.addEventListener('click', (event) => {
+			if (!accountMenu || accountMenu.classList.contains('hidden')) return;
+			const isInside = accountMenu.contains(event.target) || accountBtn.contains(event.target);
+			if (!isInside) accountMenu.classList.add('hidden');
+		});
+	}
+
+	// Game history modal (home screen).
+	if (historyBtn && historyModal) {
+		historyBtn.onclick = async (e) => {
+			e.stopPropagation();
+
+			if (!currentUser || authStatus !== 'authenticated') {
+				authModalOpenedOnce = true;
+				accountMenu?.classList?.add('hidden');
+				openAuthModal('login');
+				return;
+			}
+
+			const isOpen = !historyModal.classList.contains('hidden');
+			if (isOpen) {
+				closeHistoryPanel();
+				return;
+			}
+
+			closeAllModals();
+			historyModal.classList.remove('hidden');
+			await loadAndRenderHistory();
+		};
+
+		document.addEventListener('click', (event) => {
+			if (!historyModal || historyModal.classList.contains('hidden')) return;
+			const isInside = historyModal.contains(event.target) || historyBtn.contains(event.target);
+			if (!isInside) closeHistoryPanel();
+		});
+	}
 }
 
 document.getElementById('startBtn').onclick = () => {
+	if (!currentUser) {
+		authModalOpenedOnce = true;
+		openAuthModal('login');
+		return;
+	}
+
 	closeAllModals();
 	mainMenu.classList.add('hidden');
 	enterSpawnPicking(false);
@@ -615,13 +1007,16 @@ document.getElementById('resumeBtn').onclick = () => {
 document.getElementById('restartBtn').onclick = () => {
 	closeAllModals();
 	pauseMenu.classList.add('hidden');
+	endFlightSession('restart');
 	enterSpawnPicking(true);
 };
 
 document.getElementById('quitBtn').onclick = () => {
 	closeAllModals();
 	setRenderOptimization(true);
-	location.reload();
+	// Best-effort: send end reason, then reload quickly.
+	endFlightSession('quit');
+	setTimeout(() => location.reload(), 800);
 };
 
 document.getElementById('respawnBtn').onclick = () => {
@@ -920,6 +1315,16 @@ document.getElementById('confirmSpawnBtn').onclick = () => {
 			state.heading = 0;
 		}
 
+		// Save spawn parameters to be persisted when the flight transition finishes.
+		pendingSpawn = {
+			lon: state.lon,
+			lat: state.lat,
+			alt: state.alt,
+			heading: state.heading,
+			pitch: state.pitch,
+			roll: state.roll
+		};
+
 		visualOffset.copy(BASE_PLANE_POS);
 		visualRotation.set(0, 0, 0);
 		boostRoll = 0;
@@ -950,6 +1355,7 @@ document.getElementById('confirmSpawnBtn').onclick = () => {
 			easingFunction: Cesium.EasingFunction.QUADRATIC_IN_OUT,
 			complete: () => {
 				flightStartTime = Date.now();
+				startFlightSession();
 				uiContainer.classList.remove('hidden');
 				threeContainer.classList.remove('hidden');
 				currentState = States.FLYING;
@@ -1012,6 +1418,7 @@ const viewer = initCesium();
 
 loadingStatus.cesium = true;
 updateLoadingUI();
+initAuth();
 
 let globeLoadingStarted = false;
 const unregisterGlobeTracker = viewer.scene.postRender.addEventListener(() => {

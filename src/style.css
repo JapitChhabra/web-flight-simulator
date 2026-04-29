@@ -342,6 +342,9 @@ html {
 	flex: 1;
 	display: flex;
 	align-items: center;
+	justify-content: flex-start;
+	padding-left: 60px;
+	gap: 0;
 }
 
 .menu-nav {
@@ -943,6 +946,7 @@ html {
 
 select,
 input[type="text"],
+	input[type="password"],
 input[type="number"] {
 	background: rgba(0, 40, 0, 0.6);
 	border: 1px solid #0f0;
@@ -1090,6 +1094,208 @@ input[type="range"]::-webkit-slider-thumb {
 .btn-primary {
 	padding: 10px 30px;
 	font-size: 18px;
+}
+
+/* Auth modal (login/signup) */
+#authModal .modal-body {
+	padding-top: 20px;
+}
+
+.auth-tabs {
+	display: flex;
+	gap: 10px;
+	margin-bottom: 20px;
+	justify-content: center;
+	pointer-events: auto;
+}
+
+.auth-tab {
+	background: rgba(0, 60, 0, 0.2);
+	border: 1px solid rgba(0, 255, 0, 0.4);
+	color: #0f0;
+	padding: 10px 20px;
+	cursor: pointer;
+	font-family: inherit;
+	letter-spacing: 2px;
+	font-size: 12px;
+	transition: all 0.2s;
+}
+
+.auth-tab.active {
+	background: rgba(0, 255, 0, 0.15);
+	border-color: #0f0;
+	box-shadow: inset 0 0 12px rgba(0, 255, 0, 0.15);
+}
+
+.auth-tab:hover {
+	background: rgba(0, 255, 0, 0.1);
+}
+
+.auth-error {
+	margin: 10px 0 0 0;
+	color: #f00;
+	text-shadow: 0 0 10px rgba(255, 0, 0, 0.4);
+	font-size: 13px;
+}
+
+/* Account dropdown (home screen) */
+.menu-actions {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	position: relative;
+}
+
+.account-btn {
+	background: rgba(0, 60, 0, 0.2);
+	border: 1px solid rgba(0, 255, 0, 0.35);
+	color: #0f0;
+	padding: 10px 18px;
+	font-family: inherit;
+	letter-spacing: 2px;
+	cursor: pointer;
+	transition: all 0.2s;
+	pointer-events: auto;
+}
+
+.account-btn:hover {
+	background: rgba(0, 255, 0, 0.12);
+	border-color: #0f0;
+}
+
+.account-menu {
+	position: absolute;
+	right: 0;
+	top: 42px;
+	width: 280px;
+	background: rgba(0, 15, 0, 0.92);
+	border: 1px solid rgba(0, 255, 0, 0.35);
+	box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+	z-index: 250;
+	pointer-events: auto;
+}
+
+.account-section {
+	padding: 14px 14px 10px 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+}
+
+.account-userline {
+	font-size: 12px;
+	letter-spacing: 1px;
+	color: rgba(0, 255, 0, 0.8);
+	text-transform: uppercase;
+}
+
+.account-menu-item {
+	background: rgba(0, 60, 0, 0.15);
+	border: 1px solid rgba(0, 255, 0, 0.2);
+	color: #0f0;
+	padding: 10px 12px;
+	font-family: inherit;
+	letter-spacing: 1px;
+	cursor: pointer;
+	text-align: left;
+	transition: all 0.2s;
+}
+
+.account-menu-item:hover {
+	background: rgba(0, 255, 0, 0.12);
+	border-color: #0f0;
+}
+
+.account-menu-item.danger,
+.account-menu-item.danger:hover {
+	border-color: rgba(255, 0, 0, 0.4);
+	color: #f00;
+}
+
+/* Game history (home screen) */
+.menu-history {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 14px;
+	pointer-events: auto;
+}
+
+.history-btn {
+	background: rgba(0, 60, 0, 0.2);
+	border: 1px solid rgba(0, 255, 0, 0.35);
+	color: #0f0;
+	padding: 10px 18px;
+	font-family: inherit;
+	letter-spacing: 2px;
+	cursor: pointer;
+	transition: all 0.2s;
+}
+
+.history-btn:hover {
+	background: rgba(0, 255, 0, 0.12);
+	border-color: #0f0;
+}
+
+.history-panel {
+	width: 520px;
+	background: rgba(0, 15, 0, 0.92);
+	border: 1px solid rgba(0, 255, 0, 0.35);
+	box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+	padding: 14px;
+	pointer-events: auto;
+}
+
+.history-title {
+	font-size: 14px;
+	letter-spacing: 2px;
+	color: rgba(0, 255, 0, 0.9);
+	text-transform: uppercase;
+	margin-bottom: 10px;
+}
+
+.history-list {
+	max-height: 320px;
+	overflow-y: auto;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	padding-right: 4px;
+}
+
+.history-row {
+	padding: 10px 12px;
+	border: 1px solid rgba(0, 255, 0, 0.18);
+	background: rgba(0, 40, 0, 0.35);
+}
+
+.history-row-top {
+	display: flex;
+	justify-content: space-between;
+	gap: 10px;
+	margin-bottom: 6px;
+}
+
+.history-row-time {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.9);
+}
+
+.history-row-duration {
+	font-size: 12px;
+	color: rgba(0, 255, 0, 0.9);
+	white-space: nowrap;
+}
+
+.history-row-meta {
+	font-size: 12px;
+	color: rgba(0, 255, 0, 0.75);
+}
+
+.history-empty {
+	padding: 10px 12px;
+	font-size: 13px;
+	color: rgba(255, 255, 255, 0.7);
 }
 
 .modal-body-centered {

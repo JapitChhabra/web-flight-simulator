@@ -22,6 +22,22 @@
 						<span class="logo-main">WEB FLIGHT</span>
 						<span class="logo-sub">SIMULATOR</span>
 					</div>
+					<div class="menu-actions">
+						<button id="accountBtn" class="account-btn" type="button">ACCOUNT</button>
+						<div id="accountMenu" class="account-menu hidden">
+							<div id="accountSignedInSection" class="account-section hidden">
+								<div class="account-userline">
+									SIGNED IN AS <span id="accountUserLabel"></span>
+								</div>
+								<button id="accountAddAccountBtn" class="account-menu-item" type="button">ADD ACCOUNT</button>
+								<button id="accountLogoutBtn" class="account-menu-item danger" type="button">LOG OUT</button>
+							</div>
+							<div id="accountSignedOutSection" class="account-section">
+								<button id="accountLoginBtn" class="account-menu-item" type="button">LOG IN</button>
+								<button id="accountSignupBtn" class="account-menu-item" type="button">SIGN UP</button>
+							</div>
+						</div>
+					</div>
 				</div>
 				
 				<div class="menu-main">
@@ -36,8 +52,13 @@
 							<span class="btn-mid">SYSTEM CONFIG</span>
 							<span class="btn-bot">ADJUST HARDWARE SETTINGS</span>
 						</button>
-						<button id="helpBtn" class="main-menu-btn">
+						<button id="historyBtn" class="main-menu-btn">
 							<span class="btn-top">03</span>
+							<span class="btn-mid">GAME HISTORY</span>
+							<span class="btn-bot">VIEW PAST FLIGHTS</span>
+						</button>
+						<button id="helpBtn" class="main-menu-btn">
+							<span class="btn-top">04</span>
 							<span class="btn-mid">OPERATIONS MANUAL</span>
 							<span class="btn-bot">FLIGHT CONTROLS & PROCEDURES</span>
 						</button>
@@ -109,6 +130,63 @@
 				<div class="key">ESC / P</div>
 				<div>Pause / Tactical Menu</div>
 			</div>
+		</div>
+	</div>
+
+	<div id="authModal" class="modal hidden">
+		<div class="modal-header">
+			<div class="modal-title">ACCOUNT ACCESS</div>
+			<button class="close-modal">CLOSE</button>
+		</div>
+		<div class="modal-body">
+			<div class="auth-tabs">
+				<button id="showLoginTab" class="auth-tab active">LOGIN</button>
+				<button id="showSignupTab" class="auth-tab">SIGNUP</button>
+			</div>
+
+			<div id="loginForm" class="auth-form">
+				<h3 class="no-margin-top">Login</h3>
+				<div class="setting-item">
+					<span>Username</span>
+					<input type="text" id="loginUsername" placeholder="enter username" autocomplete="username">
+				</div>
+				<div class="setting-item">
+					<span>Password</span>
+					<input type="password" id="loginPassword" placeholder="enter password" autocomplete="current-password">
+				</div>
+				<div id="loginError" class="auth-error hidden"></div>
+				<div class="modal-actions">
+					<button id="loginSubmit" class="btn-primary" type="button">CONFIRM LOGIN</button>
+				</div>
+			</div>
+
+			<div id="signupForm" class="auth-form hidden">
+				<h3 class="no-margin-top">Signup</h3>
+				<div class="setting-item">
+					<span>Username</span>
+					<input type="text" id="signupUsername" placeholder="choose username" autocomplete="username">
+				</div>
+				<div class="setting-item">
+					<span>Password</span>
+					<input type="password" id="signupPassword" placeholder="choose password" autocomplete="new-password">
+				</div>
+				<div id="signupError" class="auth-error hidden"></div>
+				<div class="modal-actions">
+					<button id="signupSubmit" class="btn-primary" type="button">CREATE ACCOUNT</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div id="historyModal" class="modal hidden">
+		<div class="modal-header">
+			<div class="modal-title">GAME HISTORY</div>
+			<button class="close-modal">CLOSE</button>
+		</div>
+		<div class="modal-body">
+			<div id="historyTitle" class="history-title">Game History</div>
+			<div id="historyList" class="history-list"></div>
+			<div id="historyEmpty" class="history-empty">No flights yet.</div>
 		</div>
 	</div>
 
