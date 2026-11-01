@@ -4,13 +4,7 @@ A lightweight web-based flight simulator that combines **CesiumJS** global terra
 
 This repository is a streamlined release focused on smooth spawn-to-flight gameplay, clean UI, and minimal runtime complexity.
 
-## Overview
 
-Web Flight Simulator lets you:
-- Choose a spawn location anywhere on Earth
-- Fly over real-world Cesium terrain and imagery
-- Control a single F-15 aircraft with responsive arcade-style handling
-- Use a minimal HUD for heading, speed, altitude, and coordinates
 
 ## Feature Set
 
